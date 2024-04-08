@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { PineconeStore } from "langchain/vectorstores/pinecone";
 import { useState } from "react";
 import { load } from "langchain/load";
+import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 
 const apiKey = "API_KEY";
 
@@ -14,6 +15,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [namespace, setNamespace] = useState("quill");
   const [desc, setDesc] = useState("");
+
+  const embeddings2 = new HuggingFaceInferenceEmbeddings({
+    //model: "text-embedding-ada-002",
+    apiKey: "api_key", // In Node.js defaults to process.env.HUGGINGFACEHUB_API_KEY
+  });
 
   const handleClicked = async () => {
     try {
@@ -26,22 +32,27 @@ export default function Home() {
 
       pineconeClient.createIndex({
         name: "quill",
-        dimension: 1536,
+        dimension: 768,
         metric: "cosine",
         spec: {
           pod: {
             environment: "gcp-starter",
-            pods: 1,
             podType: "starter",
           },
         },
       });
       console.log("desc", desc);
-      const embeddings = new OpenAIEmbeddings({
-        openAIApiKey: "ApiKey",
-      });
+   
 
-      await PineconeStore.fromTexts([desc], {}, embeddings, {
+      // const res = await embeddings.embedQuery(
+      //   "What would be a good company name for a company that makes colorful socks?"
+      // );
+
+      //      console.log("res embeddings", embeddings);
+
+      console.log("res 2 embeddings", embeddings2);
+
+      await PineconeStore.fromTexts([desc], {}, embeddings2, {
         pineconeIndex,
         namespace: namespace,
       });
@@ -56,13 +67,13 @@ export default function Home() {
   const handleQuery = async () => {
     console.log("namespace", namespace);
     try {
-      const embeddings = new OpenAIEmbeddings({
-        openAIApiKey: "ApiKey",
-      });
+      // const embeddings = new OpenAIEmbeddings({
+      //   openAIApiKey: "ApiKey",
+      // });
       await pineconeClient.getConfig();
       const pineconeIndex = pineconeClient.index("quill");
 
-      const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      const vectorStore = await PineconeStore.fromExistingIndex(embeddings2, {
         pineconeIndex,
         namespace: namespace,
       });
@@ -70,7 +81,7 @@ export default function Home() {
       const results = await vectorStore.similaritySearch(query, 2);
       console.log("Results", results);
       const response = await new OpenAI({
-        apiKey: "ApiKey",
+        apiKey: "api_key",
         dangerouslyAllowBrowser: true,
       }).chat.completions.create({
         model: "gpt-3.5-turbo",
